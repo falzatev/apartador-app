@@ -5,6 +5,8 @@ import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { z } from "zod";
 import FormInput from "../components/form-input";
 import { useEnvios } from "../context/enviosContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEnviosStore } from "../store/enviosStore";
 
 const crearEnvioSchema = z.object({
   origen: z
@@ -19,7 +21,9 @@ const crearEnvioSchema = z.object({
 export type CrearEnvioFormData = z.infer<typeof crearEnvioSchema>;
 
 export default function CrearEnvio() {
-  const { incrementarEnvios } = useEnvios();
+  const queryClient = useQueryClient();
+  // const { incrementarEnvios } = useEnvios();
+  const incrementarEnvios = useEnviosStore((state) => state.incrementarEnvios);
   const { control, handleSubmit } = useForm<CrearEnvioFormData>({
     resolver: zodResolver(crearEnvioSchema),
     mode: "onBlur",
@@ -33,6 +37,7 @@ export default function CrearEnvio() {
   const onSubmit = (data: CrearEnvioFormData) => {
     Alert.alert("Success", `Origen: ${data.origen}\nDestino: ${data.destino}`);
     incrementarEnvios();
+    queryClient.invalidateQueries({ queryKey: ["users"] });
   };
   return (
     <>

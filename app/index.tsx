@@ -1,13 +1,45 @@
 import { Link, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useEnvios } from "../context/enviosContext";
+import { useQuery } from "@tanstack/react-query";
+import { useEnviosStore } from "../store/enviosStore";
+
+type userType = {
+  id: number;
+  name: string;
+};
 
 export default function Index() {
-  const { enviosCreados } = useEnvios();
+  const { data, isPending, isError, error } = useQuery<userType[]>({
+    queryKey: ["users"],
+    queryFn: () => {
+      return fetch("https://jsonplaceholder.typicode.com/users").then((res) =>
+        res.json(),
+      );
+      staleTime: 1000 * 60 * 5;
+    },
+  });
+  // const { enviosCreados } = useEnvios();
+  const enviosCreados = useEnviosStore((state) => state.enviosCreados);
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
+        <View style={styles.userContainer}>
+          {isPending ? (
+            <Text>Cargando...</Text>
+          ) : isError ? (
+            <Text>Ocurrio un error</Text>
+          ) : (
+            data.map((user) => {
+              return (
+                <View key={user.id}>
+                  <Text>{user.name}</Text>
+                </View>
+              );
+            })
+          )}
+        </View>
         <Text>
           Envíos creados: <Text>{enviosCreados}</Text>
         </Text>
@@ -29,6 +61,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
+  },
+  userContainer: {
+    backgroundColor: "#cec8c8",
+    borderRadius: 12,
+    overflow: "hidden",
+    padding: 16,
   },
   card: {
     backgroundColor: "#cec8c8",
