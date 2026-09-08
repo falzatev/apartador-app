@@ -1,12 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router, Stack } from "expo-router";
-import { Controller, useForm } from "react-hook-form";
+import { Stack } from "expo-router";
+import { useForm } from "react-hook-form";
 import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { z } from "zod";
-import FormInput from "../components/form-input";
-import { useEnvios } from "../context/enviosContext";
-import { useQueryClient } from "@tanstack/react-query";
-import { useEnviosStore } from "../store/enviosStore";
+import FormInput from "../../components/form-input";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useEnviosStore } from "../../store/enviosStore";
+import { crearEnvio } from "../../services/api";
 
 const crearEnvioSchema = z.object({
   origen: z
@@ -24,7 +24,7 @@ export default function CrearEnvio() {
   const queryClient = useQueryClient();
   // const { incrementarEnvios } = useEnvios();
   const incrementarEnvios = useEnviosStore((state) => state.incrementarEnvios);
-  const { control, handleSubmit } = useForm<CrearEnvioFormData>({
+  const { control, handleSubmit, reset } = useForm<CrearEnvioFormData>({
     resolver: zodResolver(crearEnvioSchema),
     mode: "onBlur",
     defaultValues: {
@@ -34,10 +34,21 @@ export default function CrearEnvio() {
     },
   });
 
+  const mutation = useMutation({
+    mutationFn: crearEnvio,
+    onSuccess: () => {
+      incrementarEnvios();
+      queryClient.invalidateQueries({ queryKey: ["envios"] });
+      Alert.alert("Éxito", "Envío creado correctamente");
+      reset(); // resetea el formulario, RHF te da esta función desde useForm()
+    },
+    onError: () => {
+      Alert.alert("Error", "No se pudo crear el envío. Intenta de nuevo.");
+    },
+  });
+
   const onSubmit = (data: CrearEnvioFormData) => {
-    Alert.alert("Success", `Origen: ${data.origen}\nDestino: ${data.destino}`);
-    incrementarEnvios();
-    queryClient.invalidateQueries({ queryKey: ["users"] });
+    mutation.mutate(data);
   };
   return (
     <>
@@ -69,7 +80,11 @@ export default function CrearEnvio() {
         </View>
 
         <View style={styles.viewButton}>
-          <Button title="guardar" onPress={handleSubmit(onSubmit)} />
+          <Button
+            title={mutation.isPending ? "Guardando..." : "guardar"}
+            onPress={handleSubmit(onSubmit)}
+            disabled={mutation.isPending}
+          />
         </View>
       </View>
     </>

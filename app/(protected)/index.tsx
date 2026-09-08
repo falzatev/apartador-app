@@ -1,8 +1,8 @@
 import { Link, Stack } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-import { useEnvios } from "../context/enviosContext";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { useEnviosStore } from "../store/enviosStore";
+import { useEnviosStore } from "../../store/enviosStore";
+import { useAuthStore } from "../../store/authStore";
 
 type userType = {
   id: number;
@@ -19,12 +19,15 @@ export default function Index() {
       staleTime: 1000 * 60 * 5;
     },
   });
-  // const { enviosCreados } = useEnvios();
   const enviosCreados = useEnviosStore((state) => state.enviosCreados);
+  const logout = useAuthStore((state) => state.logout);
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
+        <Pressable onPress={logout}>
+          <Text>Cerrar sesión</Text>
+        </Pressable>
         <View style={styles.userContainer}>
           {isPending ? (
             <Text>Cargando...</Text>

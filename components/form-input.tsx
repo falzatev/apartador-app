@@ -1,18 +1,20 @@
-import { Control, Controller } from "react-hook-form";
-import { CrearEnvioFormData } from "../app/crear-envio";
+import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
+import { CrearEnvioFormData } from "../app/(protected)/crear-envio";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
-type FormInputProps = {
-  name: keyof CrearEnvioFormData;
-  control: Control<CrearEnvioFormData>;
+type FormInputProps<T extends FieldValues> = {
+  name: FieldPath<T>;
+  control: Control<T>;
   placeholder: string;
+  secureTextEntry?: boolean;
 };
 
-export default function FormInput({
+export default function FormInput<T extends FieldValues>({
   name,
   control,
   placeholder,
-}: FormInputProps) {
+  secureTextEntry = false,
+}: FormInputProps<T>) {
   return (
     <Controller
       name={name}
@@ -25,6 +27,7 @@ export default function FormInput({
             onBlur={onBlur}
             value={value}
             placeholder={placeholder}
+            secureTextEntry={secureTextEntry}
           />
           {fieldState.error && (
             <Text style={styles.errorText}>{fieldState.error.message}</Text>
