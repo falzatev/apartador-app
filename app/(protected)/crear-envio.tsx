@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Stack } from "expo-router";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { z } from "zod";
@@ -7,6 +8,8 @@ import FormInput from "../../components/form-input";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useEnviosStore } from "../../store/enviosStore";
 import { crearEnvio } from "../../services/api";
+import * as Location from "expo-location";
+import AppMap, { Coordenadas } from "../../components/AppMap";
 
 const crearEnvioSchema = z.object({
   origen: z
@@ -50,6 +53,29 @@ export default function CrearEnvio() {
   const onSubmit = (data: CrearEnvioFormData) => {
     mutation.mutate(data);
   };
+
+  const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
+
+  async function obtenerUbicacionActual() {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      Alert.alert(
+        "Permiso necesario",
+        "Necesitamos acceso a tu ubicación para completar este paso.",
+      );
+      return null;
+    }
+
+    const posicion = await Location.getCurrentPositionAsync({});
+
+    const coordenadas = {
+      latitude: posicion.coords.latitude,
+      longitude: posicion.coords.longitude,
+    };
+    setUbicacion(coordenadas);
+    return coordenadas;
+  }
   return (
     <>
       <Stack.Screen options={{ title: "Crear envío" }} />
@@ -61,6 +87,22 @@ export default function CrearEnvio() {
             control={control}
             placeholder="Ingresar origen"
           />
+          <Button
+            title={"Usar mi ubicacion actual "}
+            onPress={obtenerUbicacionActual}
+          />
+          {ubicacion && (
+            <View style={styles.viewMap}>
+              <AppMap
+                centro={ubicacion}
+                zoom={17}
+                marcadores={[
+                  { id: "origen", posicion: ubicacion, titulo: "Origen" },
+                ]}
+                alTocarMapa={(coordenadas) => setUbicacion(coordenadas)}
+              />
+            </View>
+          )}
         </View>
         <View style={styles.inputView}>
           <Text>Destino: </Text>
@@ -102,5 +144,11 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginLeft: 40,
     marginTop: 15,
+  },
+  viewMap: {
+    width: 300,
+    height: 200,
+    marginTop: 10,
+    marginBottom: 20,
   },
 });
