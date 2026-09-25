@@ -1,23 +1,36 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Stack } from "expo-router";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { Alert, Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { useForm, useWatch } from "react-hook-form";
+import {
+  Alert,
+  Button,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { z } from "zod";
 import FormInput from "../../components/form-input";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { useEnviosStore } from "../../store/enviosStore";
-import { crearEnvio } from "../../services/api";
-import * as Location from "expo-location";
-import AppMap, { Coordenadas } from "../../components/AppMap";
+import { calcularRuta, crearEnvio } from "../../services/api";
+import SelectorUbicacion from "../../components/selector-ubicacion";
+import { calcularDistanciaKm } from "../../utils/distancia";
+import AppMap from "../../components/AppMap";
+
+const coordenadasSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+});
+
+const ubicacionSchema = z.object({
+  direccion: z.string().min(3, "La dirección es obligatoria"),
+  coordenadas: coordenadasSchema,
+});
 
 const crearEnvioSchema = z.object({
-  origen: z
-    .string()
-    .min(3, "El origen es obligatorio y debe tener mínimo 3 caracteres"),
-  destino: z
-    .string()
-    .min(3, "El destino es obligatorio y debe tener mínimo 3 caracteres"),
+  origen: ubicacionSchema,
+  destino: ubicacionSchema,
   descripcion: z.string().min(1).max(200).optional().or(z.literal("")),
 });
 
@@ -25,91 +38,75 @@ export type CrearEnvioFormData = z.infer<typeof crearEnvioSchema>;
 
 export default function CrearEnvio() {
   const queryClient = useQueryClient();
-  // const { incrementarEnvios } = useEnvios();
+  const router = useRouter();
   const incrementarEnvios = useEnviosStore((state) => state.incrementarEnvios);
   const { control, handleSubmit, reset } = useForm<CrearEnvioFormData>({
     resolver: zodResolver(crearEnvioSchema),
     mode: "onBlur",
     defaultValues: {
-      origen: "",
-      destino: "",
+      origen: { direccion: "", coordenadas: undefined },
+      destino: { direccion: "", coordenadas: undefined },
       descripcion: "",
     },
   });
 
   const mutation = useMutation({
     mutationFn: crearEnvio,
-    onSuccess: () => {
+    onSuccess: (envio) => {
       incrementarEnvios();
       queryClient.invalidateQueries({ queryKey: ["envios"] });
-      Alert.alert("Éxito", "Envío creado correctamente");
       reset(); // resetea el formulario, RHF te da esta función desde useForm()
+      router.replace(`/envio/${envio.id}`);
     },
     onError: () => {
       Alert.alert("Error", "No se pudo crear el envío. Intenta de nuevo.");
     },
   });
 
+  const origen = useWatch({ control, name: "origen" });
+  const destino = useWatch({ control, name: "destino" });
+
+  const {
+    data: ruta,
+    isPending: calculandoRuta,
+    isError: errorRuta,
+  } = useQuery({
+    queryKey: ["ruta", origen?.coordenadas, destino?.coordenadas],
+    queryFn: () => calcularRuta(origen!.coordenadas, destino!.coordenadas),
+    enabled: !!origen?.coordenadas && !!destino?.coordenadas,
+  });
+
+  const puntoMedio = ruta?.geometria[Math.floor(ruta.geometria.length / 2)];
+
+  const distanciaEstimada =
+    origen?.coordenadas && destino?.coordenadas
+      ? calcularDistanciaKm(origen.coordenadas, destino.coordenadas)
+      : null;
+
   const onSubmit = (data: CrearEnvioFormData) => {
     mutation.mutate(data);
   };
 
-  const [ubicacion, setUbicacion] = useState<Coordenadas | null>(null);
-
-  async function obtenerUbicacionActual() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-
-    if (status !== "granted") {
-      Alert.alert(
-        "Permiso necesario",
-        "Necesitamos acceso a tu ubicación para completar este paso.",
-      );
-      return null;
-    }
-
-    const posicion = await Location.getCurrentPositionAsync({});
-
-    const coordenadas = {
-      latitude: posicion.coords.latitude,
-      longitude: posicion.coords.longitude,
-    };
-    setUbicacion(coordenadas);
-    return coordenadas;
-  }
   return (
     <>
       <Stack.Screen options={{ title: "Crear envío" }} />
-      <View style={styles.crearEnvioContainer}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.crearEnvioContainer}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.inputView}>
-          <Text>Origen: </Text>
-          <FormInput
+          <SelectorUbicacion
             name="origen"
             control={control}
-            placeholder="Ingresar origen"
+            etiqueta="Origen"
           />
-          <Button
-            title={"Usar mi ubicacion actual "}
-            onPress={obtenerUbicacionActual}
-          />
-          {ubicacion && (
-            <View style={styles.viewMap}>
-              <AppMap
-                centro={ubicacion}
-                zoom={17}
-                marcadores={[
-                  { id: "origen", posicion: ubicacion, titulo: "Origen" },
-                ]}
-                alTocarMapa={(coordenadas) => setUbicacion(coordenadas)}
-              />
-            </View>
-          )}
         </View>
         <View style={styles.inputView}>
-          <Text>Destino: </Text>
-          <FormInput
+          <SelectorUbicacion
             name="destino"
             control={control}
-            placeholder="Ingresar destino"
+            etiqueta="Destino"
           />
         </View>
         <View style={styles.inputView}>
@@ -120,6 +117,25 @@ export default function CrearEnvio() {
             placeholder="Ingresar descripción"
           />
         </View>
+        {ruta && puntoMedio && (
+          <View style={styles.mapaRutaView}>
+            <AppMap
+              centro={puntoMedio}
+              zoom={14}
+              marcadores={[
+                { id: "origen", posicion: origen.coordenadas },
+                { id: "destino", posicion: destino.coordenadas },
+              ]}
+              coordenadasPolyline={ruta.geometria}
+              soloVisualizacion={true}
+            />
+          </View>
+        )}
+        <View style={styles.inputView}>
+          {distanciaEstimada !== null && (
+            <Text>Distancia estimada: {distanciaEstimada.toFixed(1)} km</Text>
+          )}
+        </View>
 
         <View style={styles.viewButton}>
           <Button
@@ -128,27 +144,30 @@ export default function CrearEnvio() {
             disabled={mutation.isPending}
           />
         </View>
-      </View>
+      </ScrollView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  crearEnvioContainer: {
+  scrollView: {
     flex: 1,
+  },
+  crearEnvioContainer: {
     alignItems: "center",
-    marginTop: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
+    paddingHorizontal: 40,
   },
   inputView: { gap: 5 },
+  mapaRutaView: {
+    alignSelf: "stretch",
+    height: 250,
+    marginBottom: 16,
+  },
   viewButton: {
     alignSelf: "flex-start",
     marginLeft: 40,
     marginTop: 15,
-  },
-  viewMap: {
-    width: 300,
-    height: 200,
-    marginTop: 10,
-    marginBottom: 20,
   },
 });

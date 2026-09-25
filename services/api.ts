@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
+import { Coordenadas } from "../components/AppMap";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -60,9 +61,14 @@ api.interceptors.response.use(
   },
 );
 
+type UbicacionEnvio = {
+  direccion: string;
+  coordenadas: { latitude: number; longitude: number };
+};
+
 export async function crearEnvio(data: {
-  origen: string;
-  destino: string;
+  origen: UbicacionEnvio;
+  destino: UbicacionEnvio;
   descripcion?: string;
 }) {
   // const response = await fetch(`${API_URL}/envios`, {
@@ -73,7 +79,7 @@ export async function crearEnvio(data: {
   // if (!response.ok) {
   //   throw new Error("Error al crear el envío");
   // }
-  const { data: response } = await api.post("/envios", data);
+  const { data: response } = await api.post<{ id: string }>("/envios", data);
 
   return response;
 }
@@ -82,6 +88,15 @@ type LoginResponse = {
   accessToken: string;
   refreshToken: string;
   usuario: { id: string; email: string; nombre: string };
+};
+
+type UbicacionRepartidorResponse = {
+  posicion: {
+    latitude: number;
+    longitude: number;
+  };
+  progreso: number;
+  completado: boolean;
 };
 
 export async function login(
@@ -101,4 +116,24 @@ export async function login(
   const { data } = await api.post("/auth/login", { email, password });
 
   return data;
+}
+
+export async function calcularRuta(origen: Coordenadas, destino: Coordenadas) {
+  const data = {
+    origen,
+    destino,
+  };
+
+  const { data: response } = await api.post("/rutas/calcular", data);
+
+  return response;
+}
+
+export async function obtenerUbicacionRepartidor(
+  id: string,
+): Promise<UbicacionRepartidorResponse> {
+  const { data: response } = await api.get<UbicacionRepartidorResponse>(
+    `/envios/${id}/ubicacion-repartidor`,
+  );
+  return response;
 }

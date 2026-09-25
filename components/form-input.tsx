@@ -1,5 +1,4 @@
 import { Control, Controller, FieldPath, FieldValues } from "react-hook-form";
-import { CrearEnvioFormData } from "../app/(protected)/crear-envio";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
 type FormInputProps<T extends FieldValues> = {
