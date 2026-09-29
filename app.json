@@ -39,7 +39,9 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Permite que Envíalo acceda a tu ubicación para calcular el origen de tu envío."
         }
-      ]
+      ],
+      "expo-notifications",
+      ["expo-location", { "locationAlwaysAndWhenInUsePermission": "..." }]
     ]
   }
 }

@@ -97,6 +97,7 @@ type UbicacionRepartidorResponse = {
   };
   progreso: number;
   completado: boolean;
+  estado: string;
 };
 
 export async function login(
@@ -135,5 +136,10 @@ export async function obtenerUbicacionRepartidor(
   const { data: response } = await api.get<UbicacionRepartidorResponse>(
     `/envios/${id}/ubicacion-repartidor`,
   );
+  return response;
+}
+
+export async function marcarEntregado(id: string) {
+  const { data: response } = await api.patch(`/envios/${id}/marcar-entregado`);
   return response;
 }

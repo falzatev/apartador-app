@@ -1,11 +1,23 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
-import { obtenerUbicacionRepartidor } from "../../../services/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+  Alert,
+} from "react-native";
+import {
+  marcarEntregado,
+  obtenerUbicacionRepartidor,
+} from "../../../services/api";
 import AppMap from "../../../components/AppMap";
+import { notificarEnvioEntregado } from "../../../utils/notificaciones";
 
 export default function SeguimientoEnvio() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const queryClient = useQueryClient();
 
   const {
     data: tracking,
@@ -17,6 +29,18 @@ export default function SeguimientoEnvio() {
     enabled: !!id,
     refetchInterval: (query) => {
       return query.state.data?.completado ? false : 3000;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: marcarEntregado,
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["tracking", id] });
+      queryClient.invalidateQueries({ queryKey: ["envios"] });
+      await notificarEnvioEntregado();
+    },
+    onError: () => {
+      Alert.alert("Error", "No se pudo marcar el envío como entregado.");
     },
   });
 
@@ -47,7 +71,15 @@ export default function SeguimientoEnvio() {
             </View>
             <View style={styles.info}>
               <Text>Progreso: {(tracking.progreso * 100).toFixed(0)}%</Text>
-              {tracking.completado && <Text>¡Envío entregado!</Text>}
+              {tracking.completado && tracking.estado !== "entregado" && (
+                <Pressable
+                  style={styles.botonPressable}
+                  onPress={() => mutation.mutate(id)}
+                  disabled={mutation.isPending}
+                >
+                  <Text>Marcar como entregado</Text>
+                </Pressable>
+              )}
             </View>
           </>
         )}
@@ -61,4 +93,5 @@ const styles = StyleSheet.create({
   centrado: { flex: 1, alignSelf: "center", textAlignVertical: "center" },
   mapa: { flex: 1 },
   info: { padding: 16, gap: 4 },
+  botonPressable: { marginBottom: 26 },
 });

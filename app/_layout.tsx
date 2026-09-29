@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "../store/authStore";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { pedirPermisoNotificaciones } from "../utils/notificaciones";
 
 const queryClient = new QueryClient();
 export default function RootLayout() {
@@ -12,6 +13,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     restaurarSesion();
+    pedirPermisoNotificaciones();
   }, []);
 
   if (isLoading) {
