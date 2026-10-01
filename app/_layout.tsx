@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/authStore";
 import { useEffect } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { pedirPermisoNotificaciones } from "../utils/notificaciones";
+import { configurarOnlineManager } from "../utils/onlineManager";
 
 const queryClient = new QueryClient();
 export default function RootLayout() {
@@ -14,6 +15,7 @@ export default function RootLayout() {
   useEffect(() => {
     restaurarSesion();
     pedirPermisoNotificaciones();
+    configurarOnlineManager();
   }, []);
 
   if (isLoading) {

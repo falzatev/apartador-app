@@ -138,8 +138,20 @@ export default function CrearEnvio() {
         </View>
 
         <View style={styles.viewButton}>
+          {mutation.isPaused && (
+            <Text style={styles.avisoOffline}>
+              Sin conexión — tu envío se enviará automáticamente cuando vuelvas
+              a tener internet.
+            </Text>
+          )}
           <Button
-            title={mutation.isPending ? "Guardando..." : "guardar"}
+            title={
+              mutation.isPaused
+                ? "Esperando conexión..."
+                : mutation.isPending
+                  ? "Guardando..."
+                  : "guardar"
+            }
             onPress={handleSubmit(onSubmit)}
             disabled={mutation.isPending}
           />
@@ -167,7 +179,10 @@ const styles = StyleSheet.create({
   },
   viewButton: {
     alignSelf: "flex-start",
-    marginLeft: 40,
+    marginLeft: 20,
     marginTop: 15,
+  },
+  avisoOffline: {
+    color: "#b10909",
   },
 });

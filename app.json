@@ -34,14 +34,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-notifications",
       [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Permite que Envíalo acceda a tu ubicación para calcular el origen de tu envío."
         }
-      ],
-      "expo-notifications",
-      ["expo-location", { "locationAlwaysAndWhenInUsePermission": "..." }]
+      ]
     ]
   }
 }
