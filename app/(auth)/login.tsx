@@ -10,7 +10,9 @@ import FormInput from "../../components/form-input";
 
 export const logingSchema = z.object({
   email: z.email({ message: "Ingresa un correo válido" }),
-  password: z.string().min(6, "La contraña es obligatoria"),
+  password: z
+    .string()
+    .min(6, "La contraseña es obligatoria con mínimo 6 caracteres."),
 });
 
 export type LoginFormData = z.infer<typeof logingSchema>;
